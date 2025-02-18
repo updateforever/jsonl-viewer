@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JSON 数据展示</title>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> <!-- 引入 Markdown 解析库 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> <!-- Markdown 解析库 -->
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -17,6 +17,17 @@
             max-width: 900px;
             margin: 0 auto;
             text-align: left;
+        }
+        .search-box {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .search-box input {
+            padding: 10px;
+            width: 300px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
         }
         .entry {
             background: #ffffff;
@@ -58,62 +69,120 @@
         .messages .assistant {
             background: #f9e79f;
         }
+        .pagination {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .pagination button {
+            padding: 10px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            font-size: 16px;
+        }
+        .pagination button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
     <h1>📌 JSON 数据展示</h1>
+
+    <!-- 🔍 搜索框 -->
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="🔍 输入关键词搜索..." onkeyup="searchData()">
+    </div>
+
+    <!-- 📦 数据列表 -->
     <div class="container" id="dataContainer"></div>
 
+    <!-- 📄 分页按钮 -->
+    <div class="pagination">
+        <button id="prevPage" onclick="changePage(-1)" disabled>⬅️ 上一页</button>
+        <span id="pageInfo">第 1 页</span>
+        <button id="nextPage" onclick="changePage(1)">➡️ 下一页</button>
+    </div>
+
     <script>
+        let jsonData = []; // 存储完整数据
+        let filteredData = []; // 经过搜索过滤后的数据
+        let currentPage = 1;
+        const pageSize = 10; // 每页显示条数
+
         async function fetchData() {
             try {
-                // 读取 JSON 数据
                 const response = await fetch('sample.json');
-                const jsonData = await response.json();
-
-                // 设定抽取的数据条数
-                const sampleSize = 50;
-                const sampledData = jsonData.length > sampleSize ? getRandomSample(jsonData, sampleSize) : jsonData;
-
-                // 解析并展示 JSON 数据
-                const container = document.getElementById("dataContainer");
-                container.innerHTML = ''; // 清空旧数据
-                
-                sampledData.forEach(entry => {
-                    const div = document.createElement("div");
-                    div.className = "entry";
-                    div.innerHTML = `
-                        <h3>ID: ${entry.id}</h3>
-                        <p><strong>📌 Mastery Level:</strong> ${entry.mastery_level}</p>
-                        <p><strong>📖 Question Type:</strong> ${entry.question_type}</p>
-                        <p><strong>📚 Knowledge:</strong> ${entry.knowledge}</p>
-                        <div class="messages">
-                            <strong>💬 Messages:</strong>
-                            <ul>
-                                ${entry.messages.map(msg => 
-                                    `<li class="${msg.role}">
-                                        <strong>${msg.role}:</strong> 
-                                        <div class="markdown">${marked.parse(msg.content)}</div> <!-- 解析 Markdown -->
-                                    </li>`).join('')}
-                            </ul>
-                        </div>
-                    `;
-                    container.appendChild(div);
-                });
+                jsonData = await response.json();
+                filteredData = jsonData;
+                renderData();
             } catch (error) {
                 console.error("加载 JSON 失败: ", error);
                 document.getElementById("dataContainer").innerHTML = "<p style='color: red;'>❌ 无法加载 JSON 数据，请检查 sample.json 是否存在！</p>";
             }
         }
 
-        // 随机抽取 N 条数据
-        function getRandomSample(array, sampleSize) {
-            let shuffled = array.sort(() => 0.5 - Math.random());
-            return shuffled.slice(0, sampleSize);
+        function renderData() {
+            const container = document.getElementById("dataContainer");
+            container.innerHTML = '';
+
+            const start = (currentPage - 1) * pageSize;
+            const end = start + pageSize;
+            const pageData = filteredData.slice(start, end);
+
+            pageData.forEach(entry => {
+                const div = document.createElement("div");
+                div.className = "entry";
+                div.innerHTML = `
+                    <h3>ID: ${entry.id}</h3>
+                    <p><strong>📌 Mastery Level:</strong> ${entry.mastery_level}</p>
+                    <p><strong>📖 Question Type:</strong> ${entry.question_type}</p>
+                    <p><strong>📚 Knowledge:</strong> ${entry.knowledge}</p>
+                    <div class="messages">
+                        <strong>💬 Messages:</strong>
+                        <ul>
+                            ${entry.messages.map(msg => 
+                                `<li class="${msg.role}">
+                                    <strong>${msg.role}:</strong> 
+                                    <div class="markdown">${marked.parse(msg.content)}</div>
+                                </li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+
+            updatePagination();
         }
 
-        // 页面加载时自动执行
-        fetchData();
+        function updatePagination() {
+            document.getElementById("pageInfo").textContent = `第 ${currentPage} 页 / 共 ${Math.ceil(filteredData.length / pageSize)} 页`;
+            document.getElementById("prevPage").disabled = (currentPage === 1);
+            document.getElementById("nextPage").disabled = (currentPage * pageSize >= filteredData.length);
+        }
+
+        function changePage(step) {
+            currentPage += step;
+            renderData();
+        }
+
+        function searchData() {
+            const searchQuery = document.getElementById("searchInput").value.toLowerCase();
+            filteredData = jsonData.filter(entry =>
+                entry.id.toLowerCase().includes(searchQuery) ||
+                entry.mastery_level.toLowerCase().includes(searchQuery) ||
+                entry.question_type.toLowerCase().includes(searchQuery) ||
+                entry.knowledge.toLowerCase().includes(searchQuery) ||
+                entry.messages.some(msg => msg.content.toLowerCase().includes(searchQuery))
+            );
+            currentPage = 1;
+            renderData();
+        }
+
+        fetchData(); // 页面加载时获取 JSON 数据
     </script>
 </body>
 </html>
