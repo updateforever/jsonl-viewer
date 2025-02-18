@@ -1,33 +1,27 @@
-<!DOCTYPE html>
-<html lang="zh">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JSONL 数据可视化</title>
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; }
-        .container { max-width: 800px; margin: 20px auto; text-align: left; }
-        .entry { border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 5px; }
-        .entry h3 { margin: 5px 0; }
-        .entry p { margin: 5px 0; }
-    </style>
-</head>
-<body>
-    <h1>JSONL 数据展示</h1>
-    <div class="container" id="dataContainer"></div>
-    <script>
-        async function fetchData() {
-            const response = await fetch('data.jsonl');
-            const text = await response.text();
-            const lines = text.trim().split('\\n');
-            let jsonData = lines.map(line => JSON.parse(line));
-            jsonData = jsonData.slice(0, 50);
+<input type="file" id="uploadJson" accept=".json">
+<div class="container" id="dataContainer"></div>
 
-            const container = document.getElementById("dataContainer");
-            jsonData.forEach(entry => {
-                const div = document.createElement("div");
-                div.className = "entry";
-                div.innerHTML = `
+<script>
+    document.getElementById('uploadJson').addEventListener('change', function (event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            try {
+                const jsonData = JSON.parse(e.target.result);
+
+                // 设置抽取的数据条数
+                const sampleSize = 50;
+                const sampledData = jsonData.length > sampleSize ? getRandomSample(jsonData, sampleSize) : jsonData;
+
+                // 解析并展示 JSON 数据
+                const container = document.getElementById("dataContainer");
+                container.innerHTML = ''; // 清空旧数据
+                sampledData.forEach(entry => {
+                    const div = document.createElement("div");
+                    div.className = "entry";
+                    div.innerHTML = `
                     <h3>ID: ${entry.id}</h3>
                     <p><strong>Mastery Level:</strong> ${entry.mastery_level}</p>
                     <p><strong>Question Type:</strong> ${entry.question_type}</p>
@@ -37,10 +31,18 @@
                         ${entry.messages.map(msg => `<li><strong>${msg.role}:</strong> ${msg.content}</li>`).join('')}
                     </ul>
                 `;
-                container.appendChild(div);
-            });
-        }
-        fetchData();
-    </script>
-</body>
-</html>
+                    container.appendChild(div);
+                });
+            } catch (error) {
+                alert("JSON 文件格式错误，请检查后再上传！");
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // 随机抽取 N 条数据
+    function getRandomSample(array, sampleSize) {
+        let shuffled = array.sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, sampleSize);
+    }
+</script>
