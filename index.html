@@ -59,15 +59,22 @@
             list-style: none;
             border-radius: 5px;
         }
-        .messages .system {
-            background: #e3f2fd;
-            font-weight: bold;
-        }
         .messages .user {
             background: #d1f0d1;
         }
         .messages .assistant {
             background: #f9e79f;
+        }
+        .think {
+            background: #e0e0e0;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            font-style: italic;
+            color: #555;
+        }
+        .answer {
+            margin-top: 5px;
         }
         .pagination {
             text-align: center;
@@ -108,10 +115,10 @@
     </div>
 
     <script>
-        let jsonData = []; // 存储完整数据
-        let filteredData = []; // 经过搜索过滤后的数据
+        let jsonData = [];
+        let filteredData = [];
         let currentPage = 1;
-        const pageSize = 10; // 每页显示条数
+        const pageSize = 1; // 只显示一条数据
 
         async function fetchData() {
             try {
@@ -144,11 +151,13 @@
                     <div class="messages">
                         <strong>💬 Messages:</strong>
                         <ul>
-                            ${entry.messages.map(msg => 
-                                `<li class="${msg.role}">
-                                    <strong>${msg.role}:</strong> 
-                                    <div class="markdown">${marked.parse(msg.content)}</div>
-                                </li>`).join('')}
+                            ${entry.messages
+                                .filter(msg => msg.role !== "system") // 过滤掉 system
+                                .map(msg => 
+                                    `<li class="${msg.role}">
+                                        <strong>${msg.role}:</strong> 
+                                        ${formatContent(msg.content)}
+                                    </li>`).join('')}
                         </ul>
                     </div>
                 `;
@@ -156,6 +165,22 @@
             });
 
             updatePagination();
+        }
+
+        function formatContent(content) {
+            const thinkMatch = content.match(/<think>(.*?)<\/think>/s);
+            let thinkPart = '';
+            let answerPart = content;
+
+            if (thinkMatch) {
+                thinkPart = thinkMatch[1].replace(/\"CoT\":\s*/, "").trim();
+                answerPart = content.replace(thinkMatch[0], '').trim();
+            }
+
+            return `
+                ${thinkPart ? `<div class="think">${marked.parse(thinkPart)}</div>` : ''}
+                <div class="answer">${marked.parse(answerPart)}</div>
+            `;
         }
 
         function updatePagination() {
@@ -176,13 +201,13 @@
                 entry.mastery_level.toLowerCase().includes(searchQuery) ||
                 entry.question_type.toLowerCase().includes(searchQuery) ||
                 entry.knowledge.toLowerCase().includes(searchQuery) ||
-                entry.messages.some(msg => msg.content.toLowerCase().includes(searchQuery))
+                entry.messages.some(msg => msg.role !== "system" && msg.content.toLowerCase().includes(searchQuery))
             );
             currentPage = 1;
             renderData();
         }
 
-        fetchData(); // 页面加载时获取 JSON 数据
+        fetchData();
     </script>
 </body>
 </html>
