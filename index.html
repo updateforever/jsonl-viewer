@@ -1,48 +1,65 @@
-<input type="file" id="uploadJson" accept=".json">
-<div class="container" id="dataContainer"></div>
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON 数据展示</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        .container { max-width: 800px; margin: 20px auto; text-align: left; }
+        .entry { border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .entry h3 { margin: 5px 0; }
+        .entry p { margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>JSON 数据展示</h1>
+    <div class="container" id="dataContainer"></div>
 
-<script>
-    document.getElementById('uploadJson').addEventListener('change', function (event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = function (e) {
+    <script>
+        async function fetchData() {
             try {
-                const jsonData = JSON.parse(e.target.result);
+                // 直接从 sample.json 读取数据
+                const response = await fetch('sample.json');
+                const jsonData = await response.json();
 
-                // 设置抽取的数据条数
+                // 设定抽取的数据条数
                 const sampleSize = 50;
                 const sampledData = jsonData.length > sampleSize ? getRandomSample(jsonData, sampleSize) : jsonData;
 
                 // 解析并展示 JSON 数据
                 const container = document.getElementById("dataContainer");
                 container.innerHTML = ''; // 清空旧数据
+                
                 sampledData.forEach(entry => {
                     const div = document.createElement("div");
                     div.className = "entry";
                     div.innerHTML = `
-                    <h3>ID: ${entry.id}</h3>
-                    <p><strong>Mastery Level:</strong> ${entry.mastery_level}</p>
-                    <p><strong>Question Type:</strong> ${entry.question_type}</p>
-                    <p><strong>Knowledge:</strong> ${entry.knowledge}</p>
-                    <p><strong>Messages:</strong></p>
-                    <ul>
-                        ${entry.messages.map(msg => `<li><strong>${msg.role}:</strong> ${msg.content}</li>`).join('')}
-                    </ul>
-                `;
+                        <h3>ID: ${entry.id}</h3>
+                        <p><strong>Mastery Level:</strong> ${entry.mastery_level}</p>
+                        <p><strong>Question Type:</strong> ${entry.question_type}</p>
+                        <p><strong>Knowledge:</strong> ${entry.knowledge}</p>
+                        <p><strong>Messages:</strong></p>
+                        <ul>
+                            ${entry.messages.map(msg => `<li><strong>${msg.role}:</strong> ${msg.content}</li>`).join('')}
+                        </ul>
+                    `;
                     container.appendChild(div);
                 });
             } catch (error) {
-                alert("JSON 文件格式错误，请检查后再上传！");
+                console.error("加载 JSON 失败: ", error);
+                document.getElementById("dataContainer").innerHTML = "<p style='color: red;'>无法加载 JSON 数据，请检查 sample.json 是否存在！</p>";
             }
-        };
-        reader.readAsText(file);
-    });
+        }
 
-    // 随机抽取 N 条数据
-    function getRandomSample(array, sampleSize) {
-        let shuffled = array.sort(() => 0.5 - Math.random());
-        return shuffled.slice(0, sampleSize);
-    }
-</script>
+        // 随机抽取 N 条数据
+        function getRandomSample(array, sampleSize) {
+            let shuffled = array.sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, sampleSize);
+        }
+
+        // 页面加载时自动执行
+        fetchData();
+    </script>
+</body>
+</html>
